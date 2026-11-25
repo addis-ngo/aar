@@ -1,0 +1,142 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerUser() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'ngoaddis06@gmail.com';
+    }
+
+    function isValidAlbum(data) {
+      return data.keys().hasAll([
+          'ownerUid',
+          'externalId',
+          'source',
+          'title',
+          'artist',
+          'releaseYear',
+          'coverUrl',
+          'rating',
+          'thoughts',
+          'favoriteSongs',
+          'tracklist',
+          'isPublic',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid',
+          'externalId',
+          'source',
+          'title',
+          'artist',
+          'releaseYear',
+          'coverUrl',
+          'rating',
+          'thoughts',
+          'favoriteSongs',
+          'tracklist',
+          'genres',
+          'isPublic',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerUid is string
+        && isValidId(data.ownerUid)
+        && data.ownerUid == request.auth.uid
+        && data.externalId is string
+        && isValidId(data.externalId)
+        && data.source is string
+        && data.source.size() <= 16
+        && data.source in ['spotify', 'itunes', 'manual']
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 200
+        && data.artist is string
+        && data.artist.size() >= 1
+        && data.artist.size() <= 200
+        && data.releaseYear is string
+        && data.releaseYear.size() <= 4
+        && data.releaseYear.matches('^([0-9]{4})?$')
+        && data.coverUrl is string
+        && data.coverUrl.size() >= 8
+        && data.coverUrl.size() <= 500
+        && data.coverUrl.matches('^https://.*$')
+        && data.rating is int
+        && data.rating >= 0
+        && data.rating <= 100
+        && data.thoughts is string
+        && data.thoughts.size() <= 2000
+        && data.favoriteSongs is list
+        && data.favoriteSongs.size() <= 20
+        && (data.favoriteSongs.size() == 0 || (data.favoriteSongs[0] is string && data.favoriteSongs[0].size() >= 1 && data.favoriteSongs[0].size() <= 160))
+        && data.tracklist is list
+        && data.tracklist.size() <= 100
+        && (data.tracklist.size() == 0 || (data.tracklist[0] is string && data.tracklist[0].size() >= 1 && data.tracklist[0].size() <= 160))
+        && (
+          !('genres' in data) ||
+          (
+            data.genres is list
+            && data.genres.size() <= 10
+            && (data.genres.size() == 0 || (data.genres[0] is string && data.genres[0].size() >= 1 && data.genres[0].size() <= 60))
+          )
+        )
+        && data.isPublic is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /albums/{albumId} {
+      allow get: if isValidId(albumId) && (existing().isPublic == true || isOwnerUser());
+      allow list: if existing().isPublic == true || isOwnerUser();
+
+      allow create: if isOwnerUser()
+        && isValidId(albumId)
+        && isValidAlbum(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwnerUser()
+        && isValidId(albumId)
+        && isValidAlbum(incoming())
+        && existing().ownerUid == request.auth.uid
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().externalId == existing().externalId
+        && incoming().source == existing().source
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'thoughts', 'favoriteSongs', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'thoughts', 'favoriteSongs', 'genres', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['genres', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'artist', 'releaseYear', 'coverUrl', 'tracklist', 'genres', 'isPublic', 'rating', 'thoughts', 'favoriteSongs', 'updatedAt'])
+        );
+
+      allow delete: if isOwnerUser()
+        && isValidId(albumId)
+        && existing().ownerUid == request.auth.uid;
+    }
+  }
+}

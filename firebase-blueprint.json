@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "AlbumReview": {
+      "title": "AlbumReview",
+      "description": "A rated album entry in Addis's AAR bubble map with written thoughts and favorite tracks.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the review owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "externalId": {
+          "type": "string",
+          "description": "Spotify or catalog album identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "source": {
+          "type": "string",
+          "description": "Catalog source of the album metadata.",
+          "enum": ["spotify", "itunes", "manual"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Album title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artist": {
+          "type": "string",
+          "description": "Primary artist name.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "releaseYear": {
+          "type": "string",
+          "description": "Four-digit release year or empty string.",
+          "maxLength": 4,
+          "pattern": "^([0-9]{4})?$"
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "HTTPS URL to square album cover artwork.",
+          "minLength": 8,
+          "maxLength": 500,
+          "pattern": "^https://.*$"
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Score out of 100 (0 to 100)."
+        },
+        "thoughts": {
+          "type": "string",
+          "description": "Short written review thoughts.",
+          "maxLength": 2000
+        },
+        "favoriteSongs": {
+          "type": "array",
+          "description": "List of up to 20 favorite song titles from the album."
+        },
+        "tracklist": {
+          "type": "array",
+          "description": "Cached tracklist titles up to 100 tracks."
+        },
+        "genres": {
+          "type": "array",
+          "description": "List of up to 10 genre tags from Spotify or catalog metadata."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the review is visible publicly on the AAR map."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the review was added."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the review was last updated."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "externalId",
+        "source",
+        "title",
+        "artist",
+        "releaseYear",
+        "coverUrl",
+        "rating",
+        "thoughts",
+        "favoriteSongs",
+        "tracklist",
+        "isPublic",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/albums/{albumId}": {
+      "schema": {
+        "$ref": "#/entities/AlbumReview"
+      },
+      "description": "Publicly readable album reviews owned and curated exclusively by Addis."
+    }
+  }
+}

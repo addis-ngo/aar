@@ -1,0 +1,103 @@
+/**
+ * Security rules test suite for AAR (/albums/{albumId}) verifying the Dirty Dozen payloads.
+ * Intended for execution against the Firestore Emulator with @firebase/rules-unit-testing.
+ */
+
+export const DIRTY_DOZEN_CASES = [
+  {
+    name: '01. Unauthenticated Create',
+    auth: null,
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { rating: 88 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '02. Non-Owner Create',
+    auth: { uid: 'attacker', email: 'other@example.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'attacker', rating: 88 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '03. Unverified Email Spoof',
+    auth: { uid: 'spoof', email: 'ngoaddis06@gmail.com', email_verified: false },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'spoof', rating: 88 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '04. Owner UID Spoofing',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'other_uid', rating: 88 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '05. Shadow Field Injection',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'addis_uid', isFeatured: true },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '06. Rating Out of Bounds',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'addis_uid', rating: 105 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '07. Unsafe Cover URL Scheme',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'addis_uid', coverUrl: 'javascript:alert(1)' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '08. Invalid Document ID Poisoning',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/bad$id',
+    payload: { ownerUid: 'addis_uid', rating: 80 },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '09. Array Exhaustion (>20 favoriteSongs)',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'addis_uid', favoriteSongs: Array.from({ length: 21 }, (_, i) => `Song ${i}`) },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '10. Client Timestamp Forgery',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'create',
+    path: 'albums/album_1',
+    payload: { ownerUid: 'addis_uid', createdAt: new Date('2020-01-01T00:00:00Z') },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '11. Immutable Field Tampering on Update',
+    auth: { uid: 'addis_uid', email: 'ngoaddis06@gmail.com', email_verified: true },
+    operation: 'update',
+    path: 'albums/album_1',
+    payload: { externalId: 'tampered_id' },
+    expected: 'PERMISSION_DENIED',
+  },
+  {
+    name: '12. Unfiltered List Query Without isPublic == true',
+    auth: null,
+    operation: 'list',
+    path: 'albums',
+    payload: null,
+    expected: 'PERMISSION_DENIED',
+  },
+];

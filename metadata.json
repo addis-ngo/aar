@@ -1,0 +1,8 @@
+{
+  "name": "AAR",
+  "description": "Addis's Album Reviews — circle-cropped album review bubble map with ratings out of 100, written thoughts, and favorite songs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
