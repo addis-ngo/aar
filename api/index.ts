@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCatalogRouter } from './_catalog';
+import { createCatalogRouter } from './_catalog.js';
 
 const app = express();
 app.disable('x-powered-by');
