@@ -13,7 +13,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'motion/react';
-import { Search, X } from 'lucide-react';
+import { ArrowUpDown, Search, X } from 'lucide-react';
 import {
   auth,
   db,
@@ -31,6 +31,21 @@ import { AlbumDetailModal } from './components/AlbumDetailModal';
 import { AddAlbumModal } from './components/AddAlbumModal';
 import { AlbumCover } from './components/AlbumCover';
 import { AnalyzePage } from './components/AnalyzePage';
+import { ListPage } from './components/ListPage';
+
+const SORT_ORDER: SortMode[] = ['rating-desc', 'recent', 'title-asc'];
+const SORT_LABELS: Record<SortMode, string> = {
+  'rating-desc': 'Highest Rated',
+  recent: 'Newest',
+  'title-asc': 'A–Z',
+};
+
+function getViewFromHash(): AppView {
+  if (typeof window === 'undefined') return 'map';
+  if (window.location.hash === '#analyze') return 'analyze';
+  if (window.location.hash === '#list') return 'list';
+  return 'map';
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -42,9 +57,7 @@ export default function App() {
   const [snapshotError, setSnapshotError] = useState<Error | null>(null);
 
   const [sortMode, setSortMode] = useState<SortMode>('rating-desc');
-  const [view, setView] = useState<AppView>(() =>
-    typeof window !== 'undefined' && window.location.hash === '#analyze' ? 'analyze' : 'map'
-  );
+  const [view, setView] = useState<AppView>(getViewFromHash);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -54,6 +67,7 @@ export default function App() {
   const [quickQuery, setQuickQuery] = useState('');
   const [quickResults, setQuickResults] = useState<CatalogAlbumResult[]>([]);
   const [quickSearching, setQuickSearching] = useState(false);
+  const [quickSearchError, setQuickSearchError] = useState('');
   const [quickDropdownOpen, setQuickDropdownOpen] = useState(false);
   const [islandExpanded, setIslandExpanded] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(
@@ -145,7 +159,7 @@ export default function App() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      setView(window.location.hash === '#analyze' ? 'analyze' : 'map');
+      setView(getViewFromHash());
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -154,10 +168,19 @@ export default function App() {
   const navigateView = (nextView: AppView) => {
     setView(nextView);
     if (typeof window !== 'undefined') {
-      const nextHash = nextView === 'analyze' ? '#analyze' : '';
+      const nextHash = nextView === 'analyze' ? '#analyze' : nextView === 'list' ? '#list' : '';
       if (window.location.hash !== nextHash) {
         window.history.replaceState(null, '', nextHash || window.location.pathname + window.location.search);
       }
+    }
+  };
+
+  const handleMapSortClick = () => {
+    if (view === 'map') {
+      const nextIndex = (SORT_ORDER.indexOf(sortMode) + 1) % SORT_ORDER.length;
+      setSortMode(SORT_ORDER[nextIndex]);
+    } else {
+      navigateView('map');
     }
   };
 
@@ -168,6 +191,7 @@ export default function App() {
 
   const closeSearchIsland = () => {
     setQuickQuery('');
+    setQuickSearchError('');
     setQuickDropdownOpen(false);
     setIslandExpanded(false);
     searchInputRef.current?.blur();
@@ -176,21 +200,36 @@ export default function App() {
   useEffect(() => {
     if (!canEdit || !quickQuery.trim()) {
       setQuickResults([]);
+      setQuickSearchError('');
       setQuickSearching(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setQuickSearching(true);
+      setQuickSearchError('');
       try {
         const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(quickQuery.trim())}`);
         if (res.ok) {
           const data = (await res.json()) as { albums?: CatalogAlbumResult[] };
           setQuickResults(data.albums ?? []);
           setQuickDropdownOpen(true);
+        } else {
+          let message = `Search failed (${res.status}).`;
+          try {
+            const errData = (await res.json()) as { error?: string };
+            if (errData?.error) message = errData.error;
+          } catch {
+            // ignore non-JSON error body
+          }
+          setQuickResults([]);
+          setQuickSearchError(message);
+          setQuickDropdownOpen(true);
         }
       } catch {
         setQuickResults([]);
+        setQuickSearchError('Could not reach the search service.');
+        setQuickDropdownOpen(true);
       } finally {
         setQuickSearching(false);
       }
@@ -350,45 +389,20 @@ export default function App() {
           >
             <button
               type="button"
-              onClick={() => {
-                setSortMode('rating-desc');
-                navigateView('map');
-              }}
-              className={`py-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                view === 'map' && sortMode === 'rating-desc'
+              onClick={handleMapSortClick}
+              title={
+                view === 'map'
+                  ? 'Click to switch between Highest Rated, Newest, and A–Z'
+                  : 'Back to album map'
+              }
+              className={`py-1 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                view === 'map'
                   ? 'text-white border-b border-white font-medium'
                   : 'text-zinc-500 hover:text-zinc-200'
               }`}
             >
-              Highest Rated
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSortMode('recent');
-                navigateView('map');
-              }}
-              className={`py-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                view === 'map' && sortMode === 'recent'
-                  ? 'text-white border-b border-white font-medium'
-                  : 'text-zinc-500 hover:text-zinc-200'
-              }`}
-            >
-              Newest
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSortMode('title-asc');
-                navigateView('map');
-              }}
-              className={`py-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                view === 'map' && sortMode === 'title-asc'
-                  ? 'text-white border-b border-white font-medium'
-                  : 'text-zinc-500 hover:text-zinc-200'
-              }`}
-            >
-              A–Z
+              <span>{SORT_LABELS[sortMode]}</span>
+              <ArrowUpDown className="w-3 h-3 opacity-70 shrink-0" />
             </button>
             <button
               type="button"
@@ -400,6 +414,17 @@ export default function App() {
               }`}
             >
               Analyze
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateView('list')}
+              className={`py-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                view === 'list'
+                  ? 'text-white border-b border-white font-medium'
+                  : 'text-zinc-500 hover:text-zinc-200'
+              }`}
+            >
+              List
             </button>
           </nav>
 
@@ -454,6 +479,12 @@ export default function App() {
             canEdit={canEdit}
             onSelectAlbum={(album) => setSelectedAlbumId(album.id)}
             onSyncGenres={handleSyncGenres}
+            onBackToMap={() => navigateView('map')}
+          />
+        ) : view === 'list' ? (
+          <ListPage
+            albums={albums}
+            onSelectAlbum={(album) => setSelectedAlbumId(album.id)}
             onBackToMap={() => navigateView('map')}
           />
         ) : sortedAlbums.length === 0 ? (
@@ -540,9 +571,15 @@ export default function App() {
                       ))}
                     </ul>
                   )}
-                  {!quickSearching && quickQuery.trim().length > 0 && quickResults.length === 0 && (
-                    <p className="px-4 py-3 text-xs text-zinc-500">No matching albums found.</p>
+                  {!quickSearching && quickSearchError && (
+                    <p className="px-4 py-3 text-xs text-red-400">{quickSearchError}</p>
                   )}
+                  {!quickSearching &&
+                    !quickSearchError &&
+                    quickQuery.trim().length > 0 &&
+                    quickResults.length === 0 && (
+                      <p className="px-4 py-3 text-xs text-zinc-500">No matching albums found.</p>
+                    )}
                   <div className="border-t border-zinc-900 px-3.5 py-2 flex justify-end">
                     <button
                       type="button"

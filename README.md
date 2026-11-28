@@ -16,7 +16,7 @@ npm run dev
    - `firebase-applet-config.json` contains public Firebase Web SDK configuration and is safe to commit alongside your deployed `firestore.rules`.
 
 2. **Import the GitHub repo into Vercel.**
-   - Vercel automatically uses `vercel.json` (`framework: "vite"`, `npm run build` → `dist/`, and serverless `/api/*` rewrites to `api/index.ts`).
+   - Vercel automatically uses `vercel.json` (`framework: "vite"`, `npm run build` → `dist/`, SPA rewrites, and native `/api/*` serverless functions under `api/`).
 
 3. **Set optional Spotify environment variables in Vercel** *(Project Settings → Environment Variables)*:
    - `SPOTIFY_CLIENT_ID`

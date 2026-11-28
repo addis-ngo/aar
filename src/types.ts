@@ -30,4 +30,4 @@ export interface AlbumReview {
 }
 
 export type SortMode = 'rating-desc' | 'recent' | 'title-asc';
-export type AppView = 'map' | 'analyze';
+export type AppView = 'map' | 'analyze' | 'list';
