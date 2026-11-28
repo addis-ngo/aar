@@ -7,7 +7,7 @@ import {
   fetchAlbumTracksAndGenres,
   resolveCatalogGenres,
   searchCatalogAlbums,
-} from './api/_lib/catalog';
+} from './api/_lib/catalog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

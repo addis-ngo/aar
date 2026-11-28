@@ -20,13 +20,6 @@ export interface ServerlessResponse extends ServerResponse {
 }
 
 export function sendJson(res: ServerlessResponse, statusCode: number, body: unknown): void {
-  const statusFn = res.status;
-  const jsonFn = res.json;
-  if (typeof statusFn === 'function' && typeof jsonFn === 'function') {
-    statusFn.call(res, statusCode);
-    jsonFn.call(res, body);
-    return;
-  }
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));

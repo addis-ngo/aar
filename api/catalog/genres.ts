@@ -4,7 +4,7 @@ import {
   sendJson,
   type ServerlessRequest,
   type ServerlessResponse,
-} from '../_lib/catalog';
+} from '../_lib/catalog.js';
 
 export default async function handler(req: ServerlessRequest, res: ServerlessResponse) {
   if (req.method && req.method !== 'GET') {
